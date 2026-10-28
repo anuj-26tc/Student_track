@@ -5,7 +5,7 @@ app = Flask(__name__)
 app.secret_key = "mysecretkey123"
 
 
-
+# This makes the database tables (only if they are not made yet)
 def make_table():
     db = sqlite3.connect("students.db")
     db.execute("""
@@ -25,6 +25,14 @@ def make_table():
             enrollment TEXT,
             skill_name TEXT,
             level TEXT
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS marks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            enrollment TEXT,
+            subject TEXT,
+            marks INTEGER
         )
     """)
     db.commit()
@@ -65,7 +73,7 @@ def sign():
     return render_template("sign.html")
 
 
-
+# This takes the Sign Up form data and saves it in the database
 @app.route("/signup", methods=["POST"])
 def signup():
     name = request.form["username"]
@@ -86,10 +94,10 @@ def signup():
     return redirect("/login")
 
 
-
+# Dashboard shows the student name, skills and marks
 @app.route("/dashboard")
 def dashboard():
-    
+    # If the student is not logged in, send to login page
     if "enrollment" not in session:
         return redirect("/login")
 
@@ -102,15 +110,27 @@ def dashboard():
         "SELECT skill_name, level FROM skills WHERE enrollment = ?",
         (session["enrollment"],)
     ).fetchall()
+    marks = db.execute(
+        "SELECT subject, marks FROM marks WHERE enrollment = ?",
+        (session["enrollment"],)
+    ).fetchall()
     db.close()
 
     if user is None:
         return redirect("/login")
 
-    return render_template("dashboard.html", name=user[0], skills=skills)
+    # Find the average of all marks
+    average = 0
+    if len(marks) > 0:
+        total = 0
+        for m in marks:
+            total = total + m[1]
+        average = round(total / len(marks))
+
+    return render_template("dashboard.html", name=user[0], skills=skills, marks=marks, average=average)
 
 
-
+# This saves a new skill in the database
 @app.route("/addskill", methods=["POST"])
 def addskill():
     if "enrollment" not in session:
@@ -130,20 +150,32 @@ def addskill():
     return redirect("/dashboard")
 
 
+# This saves new marks in the database
+@app.route("/addmark", methods=["POST"])
+def addmark():
+    if "enrollment" not in session:
+        return redirect("/login")
 
+    subject = request.form["subject"]
+    marks = request.form["marks"]
+
+    db = sqlite3.connect("students.db")
+    db.execute(
+        "INSERT INTO marks (enrollment, subject, marks) VALUES (?, ?, ?)",
+        (session["enrollment"], subject, int(marks))
+    )
+    db.commit()
+    db.close()
+
+    return redirect("/dashboard")
+
+
+# Logout clears the session
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/login")
 
-
-
-@app.route("/users")
-def users():
-    db = sqlite3.connect("students.db")
-    rows = db.execute("SELECT * FROM users").fetchall()
-    db.close()
-    return str(rows)
 
 
 make_table()

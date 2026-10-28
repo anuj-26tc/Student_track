@@ -158,11 +158,11 @@
 
     <section class="summary">
 
-        <div class="card">
-            <h3>CGPA</h3>
-            <p class="number">{{ skills|length }}</p>
-            <p>Out of 10</p>
-        </div>
+       <div class="card">
+    <h3>Average Marks</h3>
+    <p class="number">{{ average }}%</p>
+    <p>Of all subjects</p>
+</div>
 
         <div class="card">
             <h3>My Skills</h3>
@@ -172,37 +172,32 @@
 
         <div class="card">
             <h3>Courses</h3>
-           <p class="number">{{ skills|length }}</p>
-            <p>Courses completed</p>
+           <p class="number">{{ marks|length }}</p>
+            <p>Subject added</p>
         </div>
 
     </section>
 
     <section class="panel">
-        <h2>Academic Performance</h2>
+    <h2>Academic Performance</h2>
 
-        <div class="subject">
-            <p>Mathematics — 80%</p>
-            <div class="progress">
-                <div class="bar math"></div>
-            </div>
+    {% for m in marks %}
+    <div class="subject">
+        <p>{{ m[0] }} — {{ m[1] }}%</p>
+        <div class="progress">
+            <div class="bar" style="width: {{ m[1] }}%;"></div>
         </div>
+    </div>
+    {% else %}
+    <p>No marks added yet.</p>
+    {% endfor %}
 
-        <div class="subject">
-            <p>Programming — 90%</p>
-            <div class="progress">
-                <div class="bar programming"></div>
-            </div>
-        </div>
-
-        <div class="subject">
-            <p>Digital Logic — 70%</p>
-            <div class="progress">
-                <div class="bar logic"></div>
-            </div>
-        </div>
-    </section>
-
+    <form action="/addmark" method="post" style="margin-top: 25px;">
+        <input type="text" name="subject" placeholder="Subject name" required style="padding: 8px;">
+        <input type="number" name="marks" placeholder="Marks (0-100)" min="0" max="100" required style="padding: 8px;">
+        <button type="submit" style="padding: 8px 16px;">Add Marks</button>
+    </form>
+</section>
 
     <section class="skill">
     <h2>My Skills</h2>
