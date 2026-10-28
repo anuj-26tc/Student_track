@@ -139,19 +139,19 @@
 
 <body>
 
-    <!-- <h1>Student Dashboard</h1> -->
+    
     <nav>
         <h2>StudentTrack</h2>
 
         <div class="nav-links">
             <a href="/">Home</a>
             <a href="/dashboard">Dashboard</a>
-            <a href="/login">Logout</a>
+            <a href="/logout">Logout</a>
         </div>
     </nav>
 
     <section class="welcome">
-        <h1>Welcome, Student!</h1>
+        <h1>Welcome, {{ name }}!</h1>
 
         <p> Track your academic progress and your skills.</p>
     </section>
@@ -160,19 +160,19 @@
 
         <div class="card">
             <h3>CGPA</h3>
-            <p class="number">8.2</p>
+            <p class="number">{{ skills|length }}</p>
             <p>Out of 10</p>
         </div>
 
         <div class="card">
             <h3>My Skills</h3>
-            <p class="number">4</p>
+            <p class="number">{{ skills|length }}</p>
             <p>Skills added</p>
         </div>
 
         <div class="card">
             <h3>Courses</h3>
-            <p class="number">3</p>
+           <p class="number">{{ skills|length }}</p>
             <p>Courses completed</p>
         </div>
 
@@ -203,24 +203,30 @@
         </div>
     </section>
 
-    <section class="skill">
-        <h2>My Skills</h2>
-        <div class="skillgroup">
-            <div> <span>C/C++</span>
-                <span class="level">Medium</span>
-            </div>
-            <div> <span>Combinination</span>
-                <span class="level"> Beginner </span>
-            </div>
-            <div> <span>Git/Github</span>
-                <span class="level"> Beginner</span>
-            </div>
 
-            <div> <span>Web Development</span>
-                <span class="level"> Beginner</span>
-            </div>
-        </div>
-    </section>
+    <section class="skill">
+    <h2>My Skills</h2>
+
+    {% for s in skills %}
+    <div class="skillgroup">
+        <span>{{ s[0] }}</span>
+        <span class="level">{{ s[1] }}</span>
+    </div>
+    {% else %}
+    <p>No skills added yet.</p>
+    {% endfor %}
+
+    <form action="/addskill" method="post" style="margin-top: 20px;">
+        <input type="text" name="skill" placeholder="Skill name" required style="padding: 8px;">
+        <select name="level" style="padding: 8px;">
+            <option>Beginner</option>
+            <option>Medium</option>
+            <option>Advanced</option>
+        </select>
+        <button type="submit" style="padding: 8px 16px;">Add Skill</button>
+    </form>
+</section>
+    
     <footer>
         <p>Student Skill Development and Academic Progress Tracking Platform</p>
     </footer>
