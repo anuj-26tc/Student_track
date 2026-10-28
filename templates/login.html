@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>user detials</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: rgb(240, 240, 240);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .Login {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            width: 320px;
+            height: auto;
+            padding: 30px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #dae0ed, #60a5fa);
+            color: #222222;
+        }
+
+        .signupbtn a {
+            text-decoration: none;
+
+
+        }
+
+        .loginbox {
+            border-radius: 8px;
+            height: 25px;
+            width: 200px;
+            background-color: white;
+            color: rgb(17, 16, 16);
+
+        }
+
+        .button-group button {
+            flex: 1;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+
+        }
+
+        .btn-submit {
+            background-color: #4f46e5;
+            color: white;
+
+        }
+
+        .btn-submit:hover {
+            background-color: #4338ca;
+        }
+
+        .btn-cancel {
+            background-color: #b8b9bc;
+            color: white;
+
+        }
+
+        .btn-cancel:hover {
+            background-color: #e5e7eb;
+        }
+
+
+        form label {
+            color: #0b2545;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: medium;
+
+
+        }
+    </style>
+</head>
+
+<body>
+    <div class="Login">
+        <h1>Login</h1>
+        <form action="/dashboard">
+            <label>Username</label><br><input class="loginbox" type="text" placeholder="username" required>
+            <br><br>
+            <label>Password</label><br><input class="loginbox" type="Password" placeholder="Password"
+                required><br><br><br>
+            <div class="button-group"> <button type="button" class="btn-cancel">Cancel</button>
+                <button type="submit" class="btn-submit">Submit</button>
+            </div>
+            <h5 class="signupbtn">Don't have an acount? <a href="/sign">sign up</a> </h5>
+        </form>
+
+    </div>
+</body>
+
+</html>

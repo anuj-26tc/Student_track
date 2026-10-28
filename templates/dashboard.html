@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fb;
+            color: #222;
+        }
+
+        nav {
+            background-color: #265fdc;
+            color: white;
+            padding: 18px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+        }
+
+        .welcome {
+            padding: 35px 40px 15px;
+        }
+
+        .welcome h1 {
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+
+        .welcome p {
+            color: #6c6969;
+        }
+
+        .summary {
+            display: flex;
+            gap: 20px;
+            padding: 20px 40px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background-color: white;
+            padding: 22px;
+            border-radius: 12px;
+            flex: 1;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(23, 18, 18, 0.08);
+        }
+
+        .card h3 {
+            color: #555;
+        }
+
+        .number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #de1f1f;
+        }
+
+        .panel {
+            background-color: white;
+            margin: 20px 40px;
+            padding: 25px;
+            border-radius: 10px;
+        }
+
+        .subject {
+            margin-top: 20px;
+        }
+
+        .progress {
+            height: 10px;
+            background-color: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .bar {
+            height: 100%;
+            background-color: #2563eb;
+        }
+
+        .math {
+            width: 80%;
+        }
+
+        .programming {
+            width: 90%;
+        }
+
+        .logic {
+            width: 70%;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 25px;
+        }
+
+        .skill {
+            margin: 20px 40px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+
+        }
+
+        .skillgroup {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e5e7eb;
+            color: #555;
+        }
+
+        .level {
+            background-color: #bbcbe1;
+            color: #1d4ed8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- <h1>Student Dashboard</h1> -->
+    <nav>
+        <h2>StudentTrack</h2>
+
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/login">Logout</a>
+        </div>
+    </nav>
+
+    <section class="welcome">
+        <h1>Welcome, Student!</h1>
+
+        <p> Track your academic progress and your skills.</p>
+    </section>
+
+    <section class="summary">
+
+        <div class="card">
+            <h3>CGPA</h3>
+            <p class="number">8.2</p>
+            <p>Out of 10</p>
+        </div>
+
+        <div class="card">
+            <h3>My Skills</h3>
+            <p class="number">4</p>
+            <p>Skills added</p>
+        </div>
+
+        <div class="card">
+            <h3>Courses</h3>
+            <p class="number">3</p>
+            <p>Courses completed</p>
+        </div>
+
+    </section>
+
+    <section class="panel">
+        <h2>Academic Performance</h2>
+
+        <div class="subject">
+            <p>Mathematics — 80%</p>
+            <div class="progress">
+                <div class="bar math"></div>
+            </div>
+        </div>
+
+        <div class="subject">
+            <p>Programming — 90%</p>
+            <div class="progress">
+                <div class="bar programming"></div>
+            </div>
+        </div>
+
+        <div class="subject">
+            <p>Digital Logic — 70%</p>
+            <div class="progress">
+                <div class="bar logic"></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="skill">
+        <h2>My Skills</h2>
+        <div class="skillgroup">
+            <div> <span>C/C++</span>
+                <span class="level">Medium</span>
+            </div>
+            <div> <span>Combinination</span>
+                <span class="level"> Beginner </span>
+            </div>
+            <div> <span>Git/Github</span>
+                <span class="level"> Beginner</span>
+            </div>
+
+            <div> <span>Web Development</span>
+                <span class="level"> Beginner</span>
+            </div>
+        </div>
+    </section>
+    <footer>
+        <p>Student Skill Development and Academic Progress Tracking Platform</p>
+    </footer>
+</body>
+
+</html>
