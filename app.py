@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, session
+from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 
 app = Flask(__name__)
@@ -39,6 +40,15 @@ def make_table():
     db.close()
 
 
+# This stops the browser from saving old pages (fixes the Back button problem)
+@app.after_request
+def no_cache(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+# ===== MODULE 1: Login and Sign Up =====
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -54,12 +64,13 @@ def login():
 
         db = sqlite3.connect("students.db")
         user = db.execute(
-            "SELECT * FROM users WHERE enrollment = ? AND password = ?",
-            (enrollment, password)
+            "SELECT password FROM users WHERE enrollment = ?",
+            (enrollment,)
         ).fetchone()
         db.close()
 
-        if user:
+        # user[0] is the saved (hashed) password
+        if user and check_password_hash(user[0], password):
             session["enrollment"] = enrollment
             return redirect("/dashboard")
         else:
@@ -70,10 +81,9 @@ def login():
 
 @app.route("/sign")
 def sign():
-    return render_template("sign.html")
+    return render_template("sign.html", error="")
 
 
-# This takes the Sign Up form data and saves it in the database
 @app.route("/signup", methods=["POST"])
 def signup():
     name = request.form["username"]
@@ -81,9 +91,20 @@ def signup():
     enrollment = request.form["Enrollment"]
     mobile = request.form["Mobile"]
     email = request.form["Gmail"]
-    password = request.form["password"]
+    password = generate_password_hash(request.form["password"])
 
     db = sqlite3.connect("students.db")
+
+    # Check if this enrollment number is already used
+    old = db.execute(
+        "SELECT id FROM users WHERE enrollment = ?",
+        (enrollment,)
+    ).fetchone()
+
+    if old:
+        db.close()
+        return render_template("sign.html", error="This enrollment no is already registered")
+
     db.execute(
         "INSERT INTO users (name, father_name, enrollment, mobile, email, password) VALUES (?, ?, ?, ?, ?, ?)",
         (name, father_name, enrollment, mobile, email, password)
@@ -94,10 +115,16 @@ def signup():
     return redirect("/login")
 
 
-# Dashboard shows the student name, skills and marks
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+
+# ===== MODULE 2: Dashboard =====
+
 @app.route("/dashboard")
 def dashboard():
-    # If the student is not logged in, send to login page
     if "enrollment" not in session:
         return redirect("/login")
 
@@ -130,14 +157,19 @@ def dashboard():
     return render_template("dashboard.html", name=user[0], skills=skills, marks=marks, average=average)
 
 
-# This saves a new skill in the database
+# ===== MODULE 3: Skills =====
+
 @app.route("/addskill", methods=["POST"])
 def addskill():
     if "enrollment" not in session:
         return redirect("/login")
 
-    skill = request.form["skill"]
+    skill = request.form["skill"].strip()
     level = request.form["level"]
+
+    # If the skill name is empty, do nothing
+    if skill == "":
+        return redirect("/dashboard")
 
     db = sqlite3.connect("students.db")
     db.execute(
@@ -150,32 +182,34 @@ def addskill():
     return redirect("/dashboard")
 
 
-# This saves new marks in the database
+# ===== MODULE 4: Marks =====
+
 @app.route("/addmark", methods=["POST"])
 def addmark():
     if "enrollment" not in session:
         return redirect("/login")
 
-    subject = request.form["subject"]
-    marks = request.form["marks"]
+    subject = request.form["subject"].strip()
+
+    # Marks must be a number
+    try:
+        marks = int(request.form["marks"])
+    except ValueError:
+        return redirect("/dashboard")
+
+    # Marks must be between 0 and 100, and subject must not be empty
+    if marks < 0 or marks > 100 or subject == "":
+        return redirect("/dashboard")
 
     db = sqlite3.connect("students.db")
     db.execute(
         "INSERT INTO marks (enrollment, subject, marks) VALUES (?, ?, ?)",
-        (session["enrollment"], subject, int(marks))
+        (session["enrollment"], subject, marks)
     )
     db.commit()
     db.close()
 
     return redirect("/dashboard")
-
-
-# Logout clears the session
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/login")
-
 
 
 make_table()
