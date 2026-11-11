@@ -223,6 +223,12 @@
 </section>
     
     <footer>
+        <section class="panel">
+    <h2>Recommendations for You</h2>
+    {% for t in tips %}
+    <p>👉 {{ t }}</p>
+    {% endfor %}
+</section>
         <p>Student Skill Development and Academic Progress Tracking Platform</p>
     </footer>
 </body>

@@ -36,6 +36,9 @@ def make_table():
             marks INTEGER
         )
     """)
+    db.execute("CREATE INDEX IF NOT EXISTS idx_users_enrollment ON users(enrollment)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_skills_enrollment ON skills(enrollment)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_marks_enrollment ON marks(enrollment)")
     db.commit()
     db.close()
 
@@ -153,9 +156,29 @@ def dashboard():
         for m in marks:
             total = total + m[1]
         average = round(total / len(marks))
+    
+    # Make advice for the student
+    tips = []
 
-    return render_template("dashboard.html", name=user[0], skills=skills, marks=marks, average=average)
+    if len(marks) == 0:
+        tips.append("Add your marks to get advice.")
 
+    for m in marks:
+        if m[1] < 40:
+            tips.append(m[0] + ": your marks are low. Study this subject every day.")
+        elif m[1] < 60:
+            tips.append(m[0] + ": your marks are average. Practice more questions.")
+        elif m[1] >= 80:
+            tips.append(m[0] + ": very good marks. Keep it up!")
+
+    if len(skills) == 0:
+        tips.append("Add your skills to get advice.")
+
+    for s in skills:
+        if s[1] == "Beginner":
+            tips.append(s[0] + ": you are a beginner. Practice daily to reach Medium level.")
+
+    return render_template("dashboard.html", name=user[0], skills=skills, marks=marks, average=average, tips=tips)
 
 # ===== MODULE 3: Skills =====
 
