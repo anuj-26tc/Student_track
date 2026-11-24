@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}StudentTrack{% endblock %}</title>
+    <script>
+        // Use the saved dark / light mode before the page is shown
+        try {
+            var savedTheme = localStorage.getItem("theme");
+            if (savedTheme) {
+                document.documentElement.setAttribute("data-theme", savedTheme);
+            }
+        } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    {% block nav %}{% endblock %}
+
+    <!-- Messages (success, error, warning) -->
+    <div class="flash-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">
+            <span>{{ message }}</span>
+            <button type="button" class="flash-close" aria-label="Close">×</button>
+        </div>
+        {% endfor %}
+        {% endwith %}
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <button id="themeBtn" class="theme-btn" type="button" title="Dark / light mode">🌙</button>
+
+    <!-- "Are you sure?" box -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-box">
+            <div class="icon">🗑️</div>
+            <h2>Are you sure?</h2>
+            <p id="modalText"></p>
+            <div class="item-actions">
+                <button type="button" id="modalNo" class="btn btn-ghost">Cancel</button>
+                <button type="button" id="modalYes" class="btn btn-danger">Yes, delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+<header class="navbar">
+    <a class="brand" href="/teacher/dashboard">🎓 StudentTrack <small>Teacher</small></a>
+    <button class="nav-toggle" type="button" aria-label="Menu">☰</button>
+    <nav class="nav-links">
+        <a href="/teacher/dashboard" class="{% if request.path.startswith('/teacher/dashboard') or request.path.startswith('/teacher/student') %}active{% endif %}">All Students</a>
+        <a href="/teacher/password" class="{% if request.path == '/teacher/password' %}active{% endif %}">Change Password</a>
+        <a href="/teacher/logout" class="logout">Logout</a>
+    </nav>
+</header>

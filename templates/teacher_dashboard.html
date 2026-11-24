@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard - StudentTrack{% endblock %}
+{% block nav %}{% include "nav_teacher.html" %}{% endblock %}
+
+{% block content %}
+{% set status_class = {'No data': 'muted', 'Needs attention': 'low', 'Average': 'mid', 'Good': 'good', 'Excellent': 'good'} %}
+
+<main class="container">
+
+    <section class="card hero fade">
+        <div>
+            <p class="eyebrow">Teacher dashboard</p>
+            <h1>Your students at a glance</h1>
+            <p>Find who is doing well and who needs help.</p>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="card stat fade">
+            <div class="stat-icon">👥</div>
+            <div>
+                <h3>Total students</h3>
+                <p class="big"><b class="count" data-value="{{ total_students }}">{{ total_students }}</b></p>
+            </div>
+        </div>
+
+        <div class="card stat fade">
+            <div class="ring" style="--p: {{ class_average }};">
+                <span><b class="count" data-value="{{ class_average }}" data-suffix="%">{{ class_average }}%</b></span>
+            </div>
+            <div>
+                <h3>Class average</h3>
+            </div>
+        </div>
+
+        <div class="card stat fade">
+            <div class="stat-icon">⚠️</div>
+            <div>
+                <h3>Need attention</h3>
+                <p class="big"><b class="count" data-value="{{ needs_attention }}">{{ needs_attention }}</b></p>
+            </div>
+        </div>
+    </section>
+
+    <section class="card fade">
+        <h2>Open Student Records</h2>
+        <form action="/teacher/student" method="get" class="search-row">
+            <select class="input" name="e" required>
+                <option value="">Select roll / enrollment number</option>
+                {% for s in students %}<option value="{{ s[1] }}">{{ s[1] }} — {{ s[0] }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-primary" type="submit">Open Records</button>
+        </form>
+    </section>
+
+    <section class="card fade">
+        <h2>👥 All Students</h2>
+
+        <form action="/teacher/dashboard" method="get" class="search-row">
+            <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search by name or enrollment no" data-filter="#studentTable">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+
+        <div class="table-wrap">
+            <table id="studentTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Enrollment</th>
+                        <th>Average</th>
+                        <th>Skills</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr class="student-row">
+                        <td><b>{{ s[0] }}</b></td>
+                        <td>{{ s[1] }}</td>
+                        <td>{{ s[2] }}%</td>
+                        <td>{{ s[3] }}</td>
+                        <td><span class="badge {{ status_class[s[4]] }}">{{ s[4] }}</span></td>
+                        <td><a class="btn btn-sm btn-ghost" href="/teacher/student?e={{ s[1] }}">View</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6">No students found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<footer class="footer">Student Skill Development and Academic Progress Tracking Platform</footer>
+{% endblock %}

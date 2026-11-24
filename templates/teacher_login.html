@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Teacher Login - StudentTrack{% endblock %}
+
+{% block content %}
+<main class="auth">
+
+    <section class="auth-about">
+        <div class="logo">🎓 StudentTrack</div>
+        <h1>Teacher Corner</h1>
+        <p class="lead">
+            See how every student is doing, find the students who need help,
+            correct marks and write remarks that students can read on their dashboard.
+        </p>
+        <ul class="features">
+            <li><span class="icon">👥</span> See all students in one table</li>
+            <li><span class="icon">🔎</span> Search a student in a second</li>
+            <li><span class="icon">✏️</span> Update or add marks</li>
+            <li><span class="icon">💬</span> Write remarks for students</li>
+        </ul>
+    </section>
+
+    <section class="auth-form">
+        <div class="card auth-card">
+            <h2>Teacher Login 🧑‍🏫</h2>
+            <p class="hint">Only teachers can open this page.</p>
+
+            <form action="/teacher" method="post">
+                <div class="field">
+                    <label for="tid">Teacher ID</label>
+                    <input class="input" type="text" id="tid" name="teacher_id" placeholder="Enter teacher id" required autofocus>
+                </div>
+
+                <div class="field">
+                    <label for="pass">Password</label>
+                    <div class="password-wrap">
+                        <input class="input" type="password" id="pass" name="password" placeholder="Enter password" required>
+                        <button type="button" data-toggle-password="pass">Show</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+            </form>
+
+            <div class="link-row">
+                <span>Are you a student?</span>
+                <a href="/"><b>Student Login →</b></a>
+            </div>
+        </div>
+    </section>
+
+</main>
+{% endblock %}

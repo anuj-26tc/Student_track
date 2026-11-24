@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Teacher Records - StudentTrack{% endblock %}
+{% block nav %}{% include "nav_teacher.html" %}{% endblock %}
+{% block content %}
+<main class="container">
+  <section class="card hero fade"><div><p class="eyebrow">Official academic records</p><h1>Teacher Panel</h1><p>Select a student to enter or update their marks and attendance.</p></div></section>
+  <section class="card fade">
+    <h2>Choose Student</h2>
+    <form action="/teacher/student" method="get" class="search-row">
+      <select class="input" name="e" required><option value="">Select roll / enrollment number</option>{% for st in students %}<option value="{{ st[0] }}" {% if st[0]==enrollment %}selected{% endif %}>{{ st[0] }} — {{ st[1] }}</option>{% endfor %}</select>
+      <button class="btn btn-primary">Open Student</button>
+    </form>
+    {% if user %}
+    <p><b>Student:</b> {{ user[0] }} &nbsp; <b>Roll / Enrollment:</b> {{ enrollment }}</p>
+    {% endif %}
+  </section>
+  {% if user %}
+  <section class="card fade" id="academics">
+    <h2>📝 Marks Entry / Update</h2>
+    <form action="/teacher/record" method="post" class="add-form">
+      <input type="hidden" name="enrollment" value="{{ enrollment }}">
+      <input class="input" name="subject" placeholder="Subject name" value="{{ editing_mark[1] if editing_mark else '' }}" required>
+      <label>Mid-Sem (out of 30)<input class="input" type="number" name="mid_sem" min="0" max="30" step="0.5" value="{{ editing_mark[2] if editing_mark else 0 }}" required></label>
+      <label>End-Sem (out of 70)<input class="input" type="number" name="end_sem" min="0" max="70" step="0.5" value="{{ editing_mark[3] if editing_mark else 0 }}" required></label>
+      <label>Internal / Lab (out of 20)<input class="input" type="number" name="internal_lab" min="0" max="20" step="0.5" value="{{ editing_mark[4] if editing_mark else 0 }}" required></label>
+      <button class="btn btn-primary">{{ 'Update Selected Marks' if editing_mark else 'Save Marks' }}</button>
+      {% if editing_mark %}<a class="btn btn-ghost" href="/teacher/student?e={{ enrollment }}#academics">Cancel edit</a>{% endif %}
+    </form>
+    <div class="table-wrap"><table><thead><tr><th>Subject</th><th>Mid / 30</th><th>End / 70</th><th>Internal / 20</th><th>Total / 120</th><th>Percent</th><th>Action</th></tr></thead><tbody>
+    {% for a in academic %}<tr><td>{{ a[1] }}</td><td>{{ a[2] }}</td><td>{{ a[3] }}</td><td>{{ a[4] }}</td><td>{{ a[2]+a[3]+a[4] }}</td><td>{{ '%.1f'|format((a[2]+a[3]+a[4])*100/120) }}%</td><td><a class="btn btn-ghost btn-sm" href="/teacher/student?e={{ enrollment }}&edit_mark={{ a[0] }}#academics">Edit</a></td></tr>{% else %}<tr><td colspan="7">No marks entered.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+  <section class="card fade" id="attendance">
+    <h2>📅 Attendance Entry / Update</h2>
+    <form action="/teacher/attendance" method="post" class="add-form">
+      <input type="hidden" name="enrollment" value="{{ enrollment }}">
+      <input class="input" name="subject" placeholder="Subject name" value="{{ editing_attendance[1] if editing_attendance else '' }}" required>
+      <label>Total Classes Held<input class="input" type="number" name="total_classes" min="0" value="{{ editing_attendance[2] if editing_attendance else '' }}" required></label>
+      <label>Classes Attended<input class="input" type="number" name="attended_classes" min="0" value="{{ editing_attendance[3] if editing_attendance else '' }}" required></label>
+      <button class="btn btn-primary">{{ 'Update Selected Attendance' if editing_attendance else 'Save Attendance' }}</button>
+      {% if editing_attendance %}<a class="btn btn-ghost" href="/teacher/student?e={{ enrollment }}#attendance">Cancel edit</a>{% endif %}
+    </form>
+    <div class="table-wrap"><table><thead><tr><th>Subject</th><th>Held</th><th>Attended</th><th>Percentage</th><th>Status</th><th>Action</th></tr></thead><tbody>
+    {% for a in attendance_rows %}{% set pct=(a[3]*100/a[2]) if a[2] else 0 %}<tr><td>{{ a[1] }}</td><td>{{ a[2] }}</td><td>{{ a[3] }}</td><td>{{ '%.1f'|format(pct) }}%</td><td><span class="badge {{ 'good' if pct>=75 else 'low' }}">{{ 'Safe' if pct>=75 else 'Low' }}</span></td><td><a class="btn btn-ghost btn-sm" href="/teacher/student?e={{ enrollment }}&edit_attendance={{ a[0] }}#attendance">Edit</a></td></tr>{% else %}<tr><td colspan="6">No attendance entered.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+  <section class="card fade"><h2>Student Skills (Read-only)</h2>{% for sk in skills %}<p><b>{{ sk[0] }}</b> — {{ sk[5] }} · {{ sk[1] }} ({{ sk[3] }}%) {% if sk[4] %}· {{ sk[4] }}{% endif %}</p>{% else %}<p>No skills added.</p>{% endfor %}</section>
+  <section class="card fade" id="feedback"><h2>Teacher Guidance / Feedback</h2>
+    <form action="/teacher/addremark" method="post" class="add-form"><input type="hidden" name="enrollment" value="{{ enrollment }}"><textarea class="input" name="remark" rows="2" placeholder="Academic guidance or learning feedback" required></textarea><button class="btn btn-primary">Add Feedback</button></form>
+    {% for remark in remarks %}<div class="portfolio-card">{{ remark[0] }}</div>{% else %}<p>No feedback added.</p>{% endfor %}
+  </section>
+  <section class="card fade"><h2>Student Project Portfolio (Read-only)</h2>{% for project in projects %}<div class="portfolio-card"><b>{{ project[0] }}</b> · <span class="badge">{{ project[4] }}</span>{% if project[1] %}<p><b>Technologies:</b> {{ project[1] }}</p>{% endif %}{% if project[2] %}<p>{{ project[2] }}</p>{% endif %}{% if project[3] %}<a href="{{ project[3] }}" target="_blank" rel="noopener">Open project ↗</a>{% endif %}</div>{% else %}<p>No projects added.</p>{% endfor %}</section>
+  {% endif %}
+</main>
+<footer class="footer">StudentTrack • Teacher Panel</footer>
+{% endblock %}

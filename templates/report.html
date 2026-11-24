@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Student Growth Report - StudentTrack{% endblock %}
+{% block nav %}{% include "nav_student.html" %}{% endblock %}
+{% block content %}
+<main class="container report-page">
+  <section class="card report-heading"><div><p class="eyebrow">StudentTrack • Growth Summary</p><h1>Student Growth Report</h1><p><b>{{ user[0] }}</b> · Roll / Enrollment: {{ user[1] }}</p></div><button class="btn btn-primary no-print" onclick="window.print()">Print / Save as PDF</button></section>
+  <section class="stats"><div class="card stat"><div><h3>Academic average</h3><p class="big">{{ academic_average }}%</p></div></div><div class="card stat"><div><h3>Overall attendance</h3><p class="big">{{ attendance_percent }}%</p></div></div><div class="card stat"><div><h3>Skills</h3><p class="big">{{ skills|length }}</p></div></div><div class="card stat"><div><h3>Projects</h3><p class="big">{{ projects|length }}</p></div></div></section>
+  <section class="card"><h2>Academic Records</h2><div class="table-wrap"><table><thead><tr><th>Subject</th><th>Mid / 30</th><th>End / 70</th><th>Internal / 20</th><th>Total / 120</th><th>Percentage</th></tr></thead><tbody>{% for r in academic %}<tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] }}</td><td>{{ r[1]+r[2]+r[3] }}</td><td>{{ '%.1f'|format((r[1]+r[2]+r[3])*100/120) }}%</td></tr>{% else %}<tr><td colspan="6">No records</td></tr>{% endfor %}</tbody></table></div></section>
+  <section class="card"><h2>Attendance</h2><div class="table-wrap"><table><thead><tr><th>Subject</th><th>Attended</th><th>Held</th><th>Percentage</th></tr></thead><tbody>{% for r in attendance_rows %}<tr><td>{{ r[0] }}</td><td>{{ r[2] }}</td><td>{{ r[1] }}</td><td>{{ '%.1f'|format(r[2]*100/r[1] if r[1] else 0) }}%</td></tr>{% else %}<tr><td colspan="4">No records</td></tr>{% endfor %}</tbody></table></div></section>
+  <section class="card"><h2>Skills</h2><div class="table-wrap"><table><thead><tr><th>Skill</th><th>Category</th><th>Level</th><th>Progress</th></tr></thead><tbody>{% for s in skills %}<tr><td>{{ s[0] }}</td><td>{{ s[1] }}</td><td>{{ s[2] }}</td><td>{{ s[3] }}%</td></tr>{% else %}<tr><td colspan="4">No skills</td></tr>{% endfor %}</tbody></table></div></section>
+  <section class="card"><h2>Projects</h2><div class="table-wrap"><table><thead><tr><th>Project</th><th>Technologies</th><th>Status</th></tr></thead><tbody>{% for p in projects %}<tr><td>{{ p[0] }}</td><td>{{ p[1] }}</td><td>{{ p[2] }}</td></tr>{% else %}<tr><td colspan="3">No projects</td></tr>{% endfor %}</tbody></table></div></section>
+  <p class="hint">Generated from records currently saved in StudentTrack. Academic marks and attendance are maintained by teachers; skills and projects are maintained by the student.</p>
+</main>
+{% endblock %}

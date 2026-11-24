@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}My Profile - StudentTrack{% endblock %}
+{% block nav %}{% include "nav_student.html" %}{% endblock %}
+
+{% block content %}
+<main class="container">
+
+    <section class="profile-head fade">
+        <div class="avatar">{{ user[0][0]|upper }}</div>
+        <div>
+            <h1>{{ user[0] }}</h1>
+            <p class="hint">Enrollment No: {{ user[2] }}</p>
+        </div>
+    </section>
+
+    <section class="two-col">
+
+        <div class="card fade">
+            <h2>👤 Edit Profile</h2>
+            <p class="hint">Change your name, father's name, mobile number or email.</p>
+
+            <form action="/profile" method="post">
+                <div class="field">
+                    <label>Enrollment No (cannot be changed)</label>
+                    <input class="input" type="text" value="{{ user[2] }}" disabled>
+                </div>
+
+                <div class="field">
+                    <label for="father">Father's Name</label>
+                    <input class="input" type="text" id="father" name="father_name" value="{{ user[1] }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="name">Student Name</label>
+                    <input class="input" type="text" id="name" name="name" value="{{ user[0] }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="mobile">Mobile No (10 digits)</label>
+                    <input class="input" type="text" id="mobile" name="mobile" value="{{ user[3] }}" pattern="[0-9]{10}" title="Write 10 digits" required>
+                </div>
+
+                <div class="field">
+                    <label for="email">Email Id</label>
+                    <input class="input" type="email" id="email" name="email" value="{{ user[4] }}" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+
+        <div class="card fade">
+            <h2>🔒 Change Password</h2>
+            <p class="hint">Write your current password, then choose a new one.</p>
+
+            <form action="/changepassword" method="post">
+                <div class="field">
+                    <label for="current">Current Password</label>
+                    <div class="password-wrap">
+                        <input class="input" type="password" id="current" name="current" required>
+                        <button type="button" data-toggle-password="current">Show</button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="newPassword">New Password (at least 6 characters)</label>
+                    <div class="password-wrap">
+                        <input class="input" type="password" id="newPassword" name="new" minlength="6" required>
+                        <button type="button" data-toggle-password="newPassword">Show</button>
+                    </div>
+                    <div class="strength"><div id="strengthFill"></div></div>
+                    <p class="small-text" id="strengthText"></p>
+                </div>
+
+                <div class="field">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <div class="password-wrap">
+                        <input class="input" type="password" id="confirmPassword" name="confirm" required>
+                        <button type="button" data-toggle-password="confirmPassword">Show</button>
+                    </div>
+                    <p class="small-text" id="matchText"></p>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </form>
+        </div>
+
+    </section>
+</main>
+
+<footer class="footer">Student Skill Development and Academic Progress Tracking Platform</footer>
+{% endblock %}

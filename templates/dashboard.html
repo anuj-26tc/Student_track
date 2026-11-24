@@ -1,236 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Student Dashboard - StudentTrack{% endblock %}
+{% block nav %}{% include "nav_student.html" %}{% endblock %}
+{% block content %}
+<main class="container">
+  <section class="card hero fade">
+    <div><p class="eyebrow">Student growth workspace</p><h1>Welcome, {{ name }}</h1><p>Track your classroom performance, practical skills and learning goals in one place.</p></div>
+    <a class="btn btn-primary" href="/report" target="_blank">View Growth Report</a>
+  </section>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f4f7fb;
-            color: #222;
-        }
+  <section class="stats">
+    <div class="card stat"><div class="ring" style="--p:{{ average }}"><span><b>{{ average }}%</b></span></div><div><h3>Academic average</h3><p class="hint">Across recorded subjects</p></div></div>
+    <div class="card stat"><div class="ring" style="--p:{{ attendance_percent }}"><span><b>{{ attendance_percent }}%</b></span></div><div><h3>Overall attendance</h3><p class="hint">Teacher-managed records</p></div></div>
+    <div class="card stat"><div class="stat-icon">💡</div><div><h3>Skills added</h3><p class="big"><b>{{ total_skills }}</b></p></div></div>
+    <div class="card stat"><div class="stat-icon">🧩</div><div><h3>Projects</h3><p class="big"><b>{{ total_projects }}</b></p></div></div>
+  </section>
 
-        nav {
-            background-color: #265fdc;
-            color: white;
-            padding: 18px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  <section class="card fade" id="analytics">
+    <h2>📈 Academic Performance Analytics</h2><p class="hint">Subject-wise percentage based on marks out of 120. Official records are read-only.</p>
+    {% for a in academic %}
+      {% set pct = percentages[loop.index0] %}
+      <div class="chart-row"><div class="chart-label"><b>{{ a[1] }}</b><span>{{ '%.1f'|format(pct) }}%</span></div><div class="bar"><div class="fill {{ 'good' if pct >= 75 else ('mid' if pct >= 40 else 'low') }}" style="width:{{ pct }}%"></div></div></div>
+    {% else %}<p>No academic data available yet. Your teacher can add your subject records.</p>{% endfor %}
+  </section>
 
-        .nav-links a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-        }
+  <section class="card fade" id="academics">
+    <h2>📘 Academic Records</h2><p class="hint">Official marks are entered and maintained by your teacher.</p>
+    <div class="table-wrap"><table><thead><tr><th>Subject</th><th>Mid-Sem / 30</th><th>End-Sem / 70</th><th>Internal/Lab / 20</th><th>Total / 120</th><th>Percentage</th></tr></thead><tbody>
+    {% for a in academic %}<tr><td><b>{{ a[1] }}</b></td><td>{{ a[2] }}</td><td>{{ a[3] }}</td><td>{{ a[4] }}</td><td>{{ '%.1f'|format(a[2]+a[3]+a[4]) }}</td><td>{{ percentages[loop.index0] }}%</td></tr>
+    {% else %}<tr><td colspan="6">No academic records have been entered yet.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
 
-        .welcome {
-            padding: 35px 40px 15px;
-        }
+  <section class="card fade" id="attendance">
+    <h2>📅 Attendance</h2><p class="hint">Safe means attendance is 75% or above.</p>
+    <div class="table-wrap"><table><thead><tr><th>Subject</th><th>Classes Attended</th><th>Total Classes Held</th><th>Attendance</th><th>Status</th></tr></thead><tbody>
+    {% for a in attendance_rows %}{% set pct = (a[2] * 100 / a[1]) if a[1] else 0 %}<tr><td><b>{{ a[0] }}</b></td><td>{{ a[2] }}</td><td>{{ a[1] }}</td><td>{{ '%.1f'|format(pct) }}%</td><td><span class="badge {{ 'good' if pct >= 75 else 'low' }}">{{ 'Safe' if pct >= 75 else 'Low' }}</span></td></tr>
+    {% else %}<tr><td colspan="5">No attendance has been entered yet.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
 
-        .welcome h1 {
-            font-size: 30px;
-            margin-bottom: 10px;
-        }
-
-        .welcome p {
-            color: #6c6969;
-        }
-
-        .summary {
-            display: flex;
-            gap: 20px;
-            padding: 20px 40px;
-            flex-wrap: wrap;
-        }
-
-        .card {
-            background-color: white;
-            padding: 22px;
-            border-radius: 12px;
-            flex: 1;
-            min-width: 180px;
-            box-shadow: 0 4px 12px rgba(23, 18, 18, 0.08);
-        }
-
-        .card h3 {
-            color: #555;
-        }
-
-        .number {
-            font-size: 28px;
-            font-weight: bold;
-            color: #de1f1f;
-        }
-
-        .panel {
-            background-color: white;
-            margin: 20px 40px;
-            padding: 25px;
-            border-radius: 10px;
-        }
-
-        .subject {
-            margin-top: 20px;
-        }
-
-        .progress {
-            height: 10px;
-            background-color: #e5e7eb;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .bar {
-            height: 100%;
-            background-color: #2563eb;
-        }
-
-        .math {
-            width: 80%;
-        }
-
-        .programming {
-            width: 90%;
-        }
-
-        .logic {
-            width: 70%;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            margin-top: 25px;
-        }
-
-        .skill {
-            margin: 20px 40px;
-            padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-
-        }
-
-        .skillgroup {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #e5e7eb;
-            color: #555;
-        }
-
-        .level {
-            background-color: #bbcbe1;
-            color: #1d4ed8;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-
-        }
-    </style>
-</head>
-
-<body>
-
-    
-    <nav>
-        <h2>StudentTrack</h2>
-
-        <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/logout">Logout</a>
-        </div>
-    </nav>
-
-    <section class="welcome">
-        <h1>Welcome, {{ name }}!</h1>
-
-        <p> Track your academic progress and your skills.</p>
-    </section>
-
-    <section class="summary">
-
-       <div class="card">
-    <h3>Average Marks</h3>
-    <p class="number">{{ average }}%</p>
-    <p>Of all subjects</p>
-</div>
-
-        <div class="card">
-            <h3>My Skills</h3>
-            <p class="number">{{ skills|length }}</p>
-            <p>Skills added</p>
-        </div>
-
-        <div class="card">
-            <h3>Courses</h3>
-           <p class="number">{{ marks|length }}</p>
-            <p>Subject added</p>
-        </div>
-
-    </section>
-
-    <section class="panel">
-    <h2>Academic Performance</h2>
-
-    {% for m in marks %}
-    <div class="subject">
-        <p>{{ m[0] }} — {{ m[1] }}%</p>
-        <div class="progress">
-            <div class="bar" style="width: {{ m[1] }}%;"></div>
-        </div>
+  <section class="card fade" id="skills">
+    <h2>💡 Skill Development</h2><p class="hint">Add practical skills you are learning and maintain your own progress.</p>
+    {% for skill in skills %}
+    <div class="item">
+      <div class="item-head"><strong>{{ skill[1] }}</strong><span class="badge">{{ skill[5] }}</span><span class="badge">{{ skill[2] }}</span><span class="pct">{{ skill[3] }}%</span></div>
+      <div class="bar"><div class="fill" style="width:{{ skill[3] }}%"></div></div>
+      {% if skill[4] %}<p class="hint">{{ skill[4] }}</p>{% endif %}
+      <form action="/updateskill" method="post" class="add-form">
+        <input type="hidden" name="id" value="{{ skill[0] }}">
+        <select name="category" class="input">{% for c in ['Programming','Web Development','Database','Communication','Problem Solving','Design','Other'] %}<option value="{{ c }}" {% if skill[5]==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+        <select name="level" class="input"><option {% if skill[2]=='Beginner' %}selected{% endif %}>Beginner</option><option {% if skill[2]=='Intermediate' %}selected{% endif %}>Intermediate</option><option {% if skill[2]=='Advanced' %}selected{% endif %}>Advanced</option></select>
+        <input class="input" type="number" name="progress" min="0" max="100" value="{{ skill[3] }}" required>
+        <input class="input" type="text" name="learning_note" value="{{ skill[4] }}" placeholder="Learning note / project title">
+        <button class="btn btn-ghost btn-sm" type="submit">Update</button>
+      </form>
+      <form action="/deleteskill" method="post" class="inline-form" data-confirm="Delete this skill?"><input type="hidden" name="id" value="{{ skill[0] }}"><button class="btn btn-danger btn-sm">Delete</button></form>
     </div>
-    {% else %}
-    <p>No marks added yet.</p>
-    {% endfor %}
-
-    <form action="/addmark" method="post" style="margin-top: 25px;">
-        <input type="text" name="subject" placeholder="Subject name" required style="padding: 8px;">
-        <input type="number" name="marks" placeholder="Marks (0-100)" min="0" max="100" required style="padding: 8px;">
-        <button type="submit" style="padding: 8px 16px;">Add Marks</button>
+    {% else %}<p>No skills added yet. Add your first skill below.</p>{% endfor %}
+    <h3>Add a skill</h3>
+    <form action="/addskill" method="post" class="add-form">
+      <input class="input" name="skill" placeholder="Skill name (e.g. Python)" required>
+      <select class="input" name="category"><option>Programming</option><option>Web Development</option><option>Database</option><option>Communication</option><option>Problem Solving</option><option>Design</option><option>Other</option></select>
+      <select class="input" name="level"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
+      <input class="input" type="number" name="progress" min="0" max="100" value="0" placeholder="Progress %" required>
+      <input class="input" name="learning_note" placeholder="Learning note / project title">
+      <button class="btn btn-primary">Add Skill</button>
     </form>
-</section>
+  </section>
 
-    <section class="skill">
-    <h2>My Skills</h2>
-
-    {% for s in skills %}
-    <div class="skillgroup">
-        <span>{{ s[0] }}</span>
-        <span class="level">{{ s[1] }}</span>
-    </div>
-    {% else %}
-    <p>No skills added yet.</p>
-    {% endfor %}
-
-    <form action="/addskill" method="post" style="margin-top: 20px;">
-        <input type="text" name="skill" placeholder="Skill name" required style="padding: 8px;">
-        <select name="level" style="padding: 8px;">
-            <option>Beginner</option>
-            <option>Medium</option>
-            <option>Advanced</option>
-        </select>
-        <button type="submit" style="padding: 8px 16px;">Add Skill</button>
+  <section class="card fade" id="projects">
+    <h2>🧩 Student Project Portfolio</h2><p class="hint">Show practical work that demonstrates how you apply your skills.</p>
+    {% for project in projects %}
+      <div class="portfolio-card">
+        <div class="item-head"><strong>{{ project[1] }}</strong><span class="badge {{ 'good' if project[5]=='Completed' else 'mid' }}">{{ project[5] }}</span></div>
+        {% if project[2] %}<p><b>Technologies:</b> {{ project[2] }}</p>{% endif %}
+        {% if project[3] %}<p>{{ project[3] }}</p>{% endif %}
+        {% if project[4] %}<p><a href="{{ project[4] }}" target="_blank" rel="noopener">Open project / repository ↗</a></p>{% endif %}
+        <div class="item-actions"><form action="/projects/update" method="post" class="inline-form"><input type="hidden" name="id" value="{{ project[0] }}"><select class="input" name="status"><option {% if project[5]=='Planned' %}selected{% endif %}>Planned</option><option {% if project[5]=='In Progress' %}selected{% endif %}>In Progress</option><option {% if project[5]=='Completed' %}selected{% endif %}>Completed</option></select><button class="btn btn-ghost btn-sm">Update status</button></form><form action="/projects/delete" method="post" class="inline-form" data-confirm="Remove this project?"><input type="hidden" name="id" value="{{ project[0] }}"><button class="btn btn-danger btn-sm">Delete</button></form></div>
+      </div>
+    {% else %}<p>No projects added yet.</p>{% endfor %}
+    <h3>Add a project</h3>
+    <form action="/projects/add" method="post" class="add-form">
+      <input class="input" name="title" placeholder="Project title" required>
+      <input class="input" name="technologies" placeholder="Technologies (e.g. Python, Flask, SQLite)">
+      <input class="input" name="project_url" type="url" placeholder="GitHub / project URL (optional)">
+      <select class="input" name="status"><option>Planned</option><option selected>In Progress</option><option>Completed</option></select>
+      <textarea class="input" name="description" placeholder="Short project description" rows="2"></textarea>
+      <button class="btn btn-primary">Add Project</button>
     </form>
-</section>
-    
-    <footer>
-        <section class="panel">
-    <h2>Recommendations for You</h2>
-    {% for t in tips %}
-    <p>👉 {{ t }}</p>
-    {% endfor %}
-</section>
-        <p>Student Skill Development and Academic Progress Tracking Platform</p>
-    </footer>
-</body>
+  </section>
 
-</html>
+  <section class="card fade" id="feedback">
+    <h2>🗣️ Teacher Guidance</h2><p class="hint">Academic feedback shared by your teacher.</p>
+    {% for remark in remarks %}<div class="portfolio-card">{{ remark[0] }}</div>{% else %}<p>No teacher feedback has been shared yet.</p>{% endfor %}
+  </section>
+
+  <section class="card fade" id="goals">
+    <h2>🎯 Learning Goals & Milestones</h2><p class="hint">Set small learning targets and mark them complete as you achieve them.</p>
+    {% for goal in goals %}
+      <div class="goal-row"><div><b class="{{ 'completed-text' if goal[3] else '' }}">{{ goal[1] }}</b>{% if goal[2] %}<p class="hint">Target: {{ goal[2] }}</p>{% endif %}</div><div class="item-actions"><form action="/goals/toggle" method="post" class="inline-form"><input type="hidden" name="id" value="{{ goal[0] }}"><button class="btn btn-ghost btn-sm">{{ 'Mark active' if goal[3] else 'Mark complete' }}</button></form><form action="/goals/delete" method="post" class="inline-form" data-confirm="Delete this goal?"><input type="hidden" name="id" value="{{ goal[0] }}"><button class="btn btn-danger btn-sm">Delete</button></form></div></div>
+    {% else %}<p>No learning goals yet.</p>{% endfor %}
+    <form action="/goals/add" method="post" class="add-form"><input class="input" name="title" placeholder="e.g. Complete Python fundamentals" required><input class="input" type="date" name="target_date"><button class="btn btn-primary">Add Goal</button></form>
+  </section>
+</main>
+<footer class="footer">StudentTrack • Academic Progress + Practical Skill Development</footer>
+{% endblock %}

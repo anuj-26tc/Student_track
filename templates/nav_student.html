@@ -1,0 +1,10 @@
+<header class="navbar">
+    <a class="brand" href="/dashboard">🎓 StudentTrack</a>
+    <button class="nav-toggle" type="button" aria-label="Menu">☰</button>
+    <nav class="nav-links">
+        <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="/report">Growth Report</a>
+        <a href="/profile" class="{% if request.path == '/profile' %}active{% endif %}">My Profile</a>
+        <a href="/logout" class="logout">Logout</a>
+    </nav>
+</header>
