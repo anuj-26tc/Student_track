@@ -26,10 +26,13 @@ app.secret_key = get_secret_key()
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-# First teacher login. It is used only the first time.
-# After that the teacher can change the password inside the website.
+# First teacher login. It is used only when there is no teacher account yet.
+# On your laptop the first password is teacher123.
+# On a public website, set the environment variable STUDENTTRACK_TEACHER_PASSWORD
+# so that nobody can guess the password.
+# After the first login the teacher can change the password inside the website.
 TEACHER_ID = "teacher"
-TEACHER_PASSWORD = "teacher123"
+TEACHER_PASSWORD = os.environ.get("STUDENTTRACK_TEACHER_PASSWORD", "teacher123")
 
 
 # ===== Database =====
@@ -1142,7 +1145,62 @@ def teacher_logout():
     return redirect("/teacher")
 
 
+# Demo students for a public demo website (only when STUDENTTRACK_DEMO is 1 and there are no students).
+# Free hosting like Render forgets the database after a restart, so this gives the site some data again.
+def seed_demo_data():
+    db = sqlite3.connect("students.db")
+    if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:
+        db.close()
+        return
+
+    password = generate_password_hash(os.environ.get("STUDENTTRACK_DEMO_PASSWORD", "demo1234"))
+    students = [
+        ("DEMO101", "Aarav Sharma", "Rajesh Sharma"),
+        ("DEMO102", "Priya Verma", "Anil Verma"),
+        ("DEMO103", "Rohan Das", "Sumit Das"),
+    ]
+    marks = {
+        "DEMO101": [("Mathematics", 24, 58, 17), ("Physics", 22, 52, 16), ("Programming", 28, 66, 19)],
+        "DEMO102": [("Mathematics", 27, 62, 18), ("Physics", 25, 60, 18), ("Programming", 29, 68, 20)],
+        "DEMO103": [("Mathematics", 8, 20, 6), ("Physics", 10, 24, 8), ("Programming", 14, 30, 10)],
+    }
+    # (classes held, classes attended) for the three subjects of each student, in the same order as the marks
+    attendance = {
+        "DEMO101": [(40, 34), (40, 28), (40, 37)],      # Physics is 70% (Low)
+        "DEMO102": [(40, 39), (40, 38), (40, 40)],
+        "DEMO103": [(40, 22), (40, 24), (40, 20)],      # all Low
+    }
+
+    for s in students:
+        db.execute(
+            "INSERT INTO users (name, father_name, enrollment, mobile, email, password) VALUES (?, ?, ?, ?, ?, ?)",
+            (s[1], s[2], s[0], "9000000000", s[0].lower() + "@example.com", password)
+        )
+        for i in range(len(marks[s[0]])):
+            m = marks[s[0]][i]
+            held, attended = attendance[s[0]][i]
+            db.execute(
+                "INSERT INTO academic_records (enrollment, subject, mid_sem, end_sem, internal_lab) VALUES (?, ?, ?, ?, ?)",
+                (s[0], m[0], m[1], m[2], m[3])
+            )
+            db.execute(
+                "INSERT INTO attendance (enrollment, subject, total_classes, attended_classes) VALUES (?, ?, ?, ?)",
+                (s[0], m[0], held, attended)
+            )
+
+    db.execute("INSERT INTO skills (enrollment, skill_name, level, category, progress, learning_note) VALUES ('DEMO101', 'Python', 'Intermediate', 'Programming', 60, 'Practising on small programs')")
+    db.execute("INSERT INTO skills (enrollment, skill_name, level, category, progress, learning_note) VALUES ('DEMO101', 'HTML and CSS', 'Beginner', 'Web Development', 20, '')")
+    db.execute("INSERT INTO skills (enrollment, skill_name, level, category, progress, learning_note) VALUES ('DEMO102', 'SQL', 'Advanced', 'Database', 85, 'Done two small projects')")
+    db.execute("INSERT INTO projects (enrollment, title, technologies, description, project_url, status) VALUES ('DEMO101', 'Student Tracker', 'Python, Flask, SQLite', 'A website to track marks and skills', '', 'In Progress')")
+    db.execute("INSERT INTO learning_goals (enrollment, title, target_date, completed) VALUES ('DEMO101', 'Finish Python basics', '2030-12-31', 0)")
+    db.execute("INSERT INTO remarks (enrollment, remark) VALUES ('DEMO103', 'Please revise Mathematics every day and meet me this week.')")
+    db.commit()
+    db.close()
+
+
 make_table()
+if os.environ.get("STUDENTTRACK_DEMO") == "1":
+    seed_demo_data()
 
 if __name__ == "__main__":
     app.run(debug=False)

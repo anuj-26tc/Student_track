@@ -376,6 +376,38 @@ class StudentTrackTests(unittest.TestCase):
                   "idx_remarks_enrollment", "idx_users_enrollment_unique"]:
             self.assertIn(n, names)
 
+    # ===== Public website settings =====
+    def test_teacher_password_can_come_from_environment(self):
+        os.remove("students.db")
+        old = A.TEACHER_PASSWORD
+        A.TEACHER_PASSWORD = "from-env-123"
+        try:
+            A.make_table()
+        finally:
+            A.TEACHER_PASSWORD = old
+        self.assertIn("Wrong teacher", text(self.teacher(password="teacher123")))
+        self.assertEqual(self.teacher(password="from-env-123").status_code, 302)
+
+    def test_demo_data_is_made_only_for_an_empty_database(self):
+        A.seed_demo_data()
+        self.assertEqual(self.one("SELECT COUNT(*) FROM users")[0], 3)
+        self.assertEqual(self.one("SELECT COUNT(*) FROM academic_records")[0], 9)
+        self.assertNotEqual(self.one("SELECT password FROM users")[0], "demo1234")
+        self.assertEqual(self.login(enrollment="DEMO101", password="demo1234").status_code, 302)
+        h = text(self.c.get("/dashboard"))
+        self.assertIn("Aarav Sharma", h)
+        self.assertIn("Physics: attendance is 70.0%", h)          # the demo shows a low attendance advice
+        A.seed_demo_data()                                      # second call does nothing
+        self.assertEqual(self.one("SELECT COUNT(*) FROM users")[0], 3)
+        t = A.app.test_client()
+        self.teacher(t)
+        self.assertIn("Priya Verma", text(t.get("/teacher/dashboard")))
+
+    def test_demo_data_is_not_added_when_students_exist(self):
+        self.signup()
+        A.seed_demo_data()
+        self.assertEqual(self.one("SELECT COUNT(*) FROM users")[0], 1)
+
     def test_report_page(self):
         self.student()
         self.assertEqual(self.c.get("/report").status_code, 200)

@@ -52,3 +52,15 @@ DATABASE
 The website makes students.db by itself the first time it starts and upgrades an old one safely.
 Tables: users, skills, marks (old, kept only for the one-time upgrade), remarks,
 academic_records, attendance, projects, learning_goals, teacher_account.
+
+PUT THE WEBSITE ON THE INTERNET (Render, free)
+Build command : pip install -r requirements.txt
+Start command : gunicorn app:app
+Environment variables to set on Render:
+  STUDENTTRACK_SECRET_KEY        any long random text (keeps the login cookie safe)
+  STUDENTTRACK_TEACHER_PASSWORD  the teacher password for the public website (do not use teacher123)
+  STUDENTTRACK_DEMO              1  (makes 3 demo students: DEMO101, DEMO102, DEMO103, password demo1234)
+  STUDENTTRACK_DEMO_PASSWORD     optional, a different password for the demo students
+Important: a free Render service forgets its database whenever it restarts, redeploys or sleeps
+(it sleeps after 15 minutes without visitors and needs about one minute to wake up).
+So the public website is for demonstration only. Do not type real student details on it.
