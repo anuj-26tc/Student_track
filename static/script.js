@@ -135,7 +135,7 @@
             return name.toLowerCase();
         });
         var warning = document.getElementById(box.getAttribute("data-warning"));
-        var button = box.form.querySelector("button[type=submit]");
+        var button = box.form.querySelector("button");
 
         box.addEventListener("input", function () {
             var typed = box.value.trim().toLowerCase();

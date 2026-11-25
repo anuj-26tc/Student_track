@@ -1018,3 +1018,32 @@ tbody tr:hover {
 @media (max-width:650px) {
   .report-heading, .goal-row { align-items:flex-start; flex-direction:column; }
 }
+
+/* ===== Spacing and label fixes (final check) ===== */
+.container > .card,
+.container > section.card {
+    margin-bottom: 20px;
+}
+
+.container > .stats {
+    margin-bottom: 20px;
+}
+
+.add-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 150px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.add-form label .input {
+    width: 100%;
+}
+
+.tip {
+    line-height: 1.45;
+}

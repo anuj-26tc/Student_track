@@ -40,6 +40,15 @@
                 <p class="big"><b class="count" data-value="{{ needs_attention }}">{{ needs_attention }}</b></p>
             </div>
         </div>
+
+        <div class="card stat fade">
+            <div class="stat-icon">📅</div>
+            <div>
+                <h3>Low attendance</h3>
+                <p class="big"><b class="count" data-value="{{ low_attendance }}">{{ low_attendance }}</b></p>
+                <p class="hint" style="margin: 0;">Below 75%</p>
+            </div>
+        </div>
     </section>
 
     <section class="card fade">
@@ -47,14 +56,17 @@
         <form action="/teacher/student" method="get" class="search-row">
             <select class="input" name="e" required>
                 <option value="">Select roll / enrollment number</option>
-                {% for s in students %}<option value="{{ s[1] }}">{{ s[1] }} — {{ s[0] }}</option>{% endfor %}
+                {% for s in all_students %}<option value="{{ s[1] }}">{{ s[1] }} — {{ s[0] }}</option>{% endfor %}
             </select>
             <button class="btn btn-primary" type="submit">Open Records</button>
         </form>
     </section>
 
     <section class="card fade">
-        <h2>👥 All Students</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2>👥 All Students</h2>
+            <a class="btn btn-ghost btn-sm" href="/teacher/export">⬇️ Download class report (CSV)</a>
+        </div>
 
         <form action="/teacher/dashboard" method="get" class="search-row">
             <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search by name or enrollment no" data-filter="#studentTable">
@@ -68,6 +80,7 @@
                         <th>Name</th>
                         <th>Enrollment</th>
                         <th>Average</th>
+                        <th>Attendance</th>
                         <th>Skills</th>
                         <th>Status</th>
                         <th></th>
@@ -79,13 +92,14 @@
                         <td><b>{{ s[0] }}</b></td>
                         <td>{{ s[1] }}</td>
                         <td>{{ s[2] }}%</td>
+                        <td>{% if s[5] is none %}<span class="badge muted">No data</span>{% else %}<span class="badge {{ 'good' if s[5] >= 75 else 'low' }}">{{ s[5] }}%</span>{% endif %}</td>
                         <td>{{ s[3] }}</td>
                         <td><span class="badge {{ status_class[s[4]] }}">{{ s[4] }}</span></td>
                         <td><a class="btn btn-sm btn-ghost" href="/teacher/student?e={{ s[1] }}">View</a></td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6">No students found.</td>
+                        <td colspan="7">No students found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

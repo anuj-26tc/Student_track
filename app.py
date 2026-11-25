@@ -1,10 +1,30 @@
 import os
-from flask import Flask, render_template, request, redirect, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
+import csv
+import io
+import datetime
 import sqlite3
+from flask import Flask, render_template, request, redirect, session, flash, Response
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("STUDENTTRACK_SECRET_KEY", "studenttrack-local-development-key-change-before-deployment")
+
+
+# The secret key protects the login cookie.
+# It is made one time with random letters and saved in secret_key.txt (this file is not put on GitHub).
+def get_secret_key():
+    key = os.environ.get("STUDENTTRACK_SECRET_KEY")
+    if key:
+        return key
+    if not os.path.exists("secret_key.txt"):
+        with open("secret_key.txt", "w") as f:
+            f.write(os.urandom(24).hex())
+    with open("secret_key.txt") as f:
+        return f.read().strip()
+
+
+app.secret_key = get_secret_key()
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # First teacher login. It is used only the first time.
 # After that the teacher can change the password inside the website.
@@ -100,12 +120,16 @@ def make_table():
         target_date TEXT DEFAULT '',
         completed INTEGER NOT NULL DEFAULT 0
     )""")
-    # Preserve subjects entered in the older version (where marks were stored as a percentage).
-    db.execute("""
-        INSERT OR IGNORE INTO academic_records (enrollment, subject, mid_sem, end_sem, internal_lab)
-        SELECT enrollment, subject, marks * 0.30, marks * 0.70, marks * 0.20
-        FROM marks
-    """)
+    # Copy the subjects of the older version (where marks were a percentage) only ONE time.
+    # Before this fix it ran at every start, so a deleted subject came back after a restart.
+    version = db.execute("PRAGMA user_version").fetchone()[0]
+    if version < 1:
+        db.execute("""
+            INSERT OR IGNORE INTO academic_records (enrollment, subject, mid_sem, end_sem, internal_lab)
+            SELECT enrollment, subject, marks * 0.30, marks * 0.70, marks * 0.20
+            FROM marks
+        """)
+        db.execute("PRAGMA user_version = 1")
 
     db.execute("""
         CREATE TABLE IF NOT EXISTS teacher_account (
@@ -127,6 +151,13 @@ def make_table():
     db.execute("CREATE INDEX IF NOT EXISTS idx_skills_enrollment ON skills(enrollment)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_marks_enrollment ON marks(enrollment)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_remarks_enrollment ON remarks(enrollment)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_projects_enrollment ON projects(enrollment)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_goals_enrollment ON learning_goals(enrollment)")
+    # The database itself must also refuse a repeated enrollment number
+    try:
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_enrollment_unique ON users(enrollment)")
+    except sqlite3.IntegrityError:
+        pass
     db.commit()
     db.close()
 
@@ -238,6 +269,104 @@ def find_skill(db, enrollment, skill):
     return None
 
 
+# Longest text allowed in each box (so a very long text cannot break the page)
+LIMITS = {"subject": 60, "skill": 50, "note": 200, "title": 100, "technologies": 150,
+          "description": 500, "url": 300, "goal": 150, "remark": 1000}
+
+
+def too_long(**texts):
+    for key in texts:
+        if len(texts[key]) > LIMITS[key]:
+            return True
+    return False
+
+
+# Makes the advice list for the student dashboard (this is the small recommendation engine)
+def make_tips(academic, percentages, attendance_rows, skills, goals, projects):
+    tips = []
+
+    # 1. Advice from marks of every subject
+    if len(academic) == 0:
+        tips.append("Your teacher has not added your marks yet.")
+    for i in range(len(academic)):
+        subject = academic[i][1]
+        pct = percentages[i]
+        if pct < 40:
+            tips.append(subject + ": your result is low (" + str(pct) + "%). Revise it every day and ask your teacher for help.")
+        elif pct < 60:
+            tips.append(subject + ": your result is average (" + str(pct) + "%). Practise more questions.")
+        elif pct >= 80:
+            tips.append(subject + ": very good result (" + str(pct) + "%). Keep it up!")
+
+    # 2. Advice from attendance (75% is needed)
+    for a in attendance_rows:
+        total = a[1]
+        attended = a[2]
+        if total > 0 and attended * 100 / total < 75:
+            need = 3 * total - 4 * attended
+            tips.append(a[0] + ": attendance is " + str(round(attended * 100 / total, 1)) +
+                        "%. Attend the next " + str(need) + " classes in a row to reach 75%.")
+
+    # 3. Advice from skills
+    if len(skills) == 0:
+        tips.append("Add your first skill to start tracking your growth.")
+    for s in skills:
+        # s = (id, skill_name, level, progress, learning_note, category)
+        if s[2] == "Beginner" and s[3] < 30:
+            tips.append(s[1] + ": practise a little every day to move from Beginner to Intermediate.")
+        elif s[3] >= 80 and s[2] != "Advanced":
+            tips.append(s[1] + ": your progress is " + str(s[3]) + "%. Think about moving to the next level.")
+
+    # 4. Advice from projects and goals
+    if len(skills) > 0 and len(projects) == 0:
+        tips.append("Build a small project with your skills and add it to your portfolio.")
+    if len(goals) == 0:
+        tips.append("Set a learning goal with a target date.")
+    today = datetime.date.today().isoformat()
+    for g in goals:
+        # g = (id, title, target_date, completed)
+        if not g[3] and g[2] and g[2] < today:
+            tips.append("Goal \"" + g[1] + "\" is past its target date. Finish it or choose a new date.")
+
+    return tips[:12]
+
+
+# Makes a list of all students: (name, enrollment, average, skills, status, attendance, projects)
+def load_all_students(db):
+    users = db.execute("SELECT name, enrollment FROM users ORDER BY name").fetchall()
+    result = []
+    for u in users:
+        marks = db.execute(
+            "SELECT subject, (mid_sem + end_sem + internal_lab) * 100.0 / 120.0, id FROM academic_records WHERE enrollment = ?",
+            (u[1],)
+        ).fetchall()
+        skill_count = db.execute(
+            "SELECT COUNT(*) FROM skills WHERE enrollment = ?", (u[1],)
+        ).fetchone()[0]
+        project_count = db.execute(
+            "SELECT COUNT(*) FROM projects WHERE enrollment = ?", (u[1],)
+        ).fetchone()[0]
+        att = db.execute(
+            "SELECT COALESCE(SUM(total_classes), 0), COALESCE(SUM(attended_classes), 0) FROM attendance WHERE enrollment = ?",
+            (u[1],)
+        ).fetchone()
+        attendance = None
+        if att[0] > 0:
+            attendance = round(att[1] * 100 / att[0], 1)
+        average = find_average(marks)
+        status = find_status(average, len(marks))
+        result.append((u[0], u[1], average, skill_count, status, attendance, project_count))
+    return result
+
+
+# A cell that starts with = + - @ can run as a formula in Excel. This puts a ' before it.
+def safe_cell(value):
+    text = str(value)
+    if text[:1] in ["=", "+", "-", "@"]:
+        return "'" + text
+    return text
+
+
 # This stops the browser from saving old pages (fixes the Back button problem)
 @app.after_request
 def no_cache(response):
@@ -297,6 +426,10 @@ def signup():
         flash("Please fill all the boxes", "error")
         return render_template("sign.html")
 
+    if len(name) > 80 or len(father_name) > 80 or len(enrollment) > 30 or len(email) > 120:
+        flash("One of the boxes has too many letters", "error")
+        return render_template("sign.html")
+
     if not mobile.isdigit() or len(mobile) != 10:
         flash("Mobile number must have 10 digits", "error")
         return render_template("sign.html")
@@ -317,11 +450,16 @@ def signup():
         flash("This enrollment no is already registered", "error")
         return render_template("sign.html")
 
-    db.execute(
-        "INSERT INTO users (name, father_name, enrollment, mobile, email, password) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, father_name, enrollment, mobile, email, generate_password_hash(password))
-    )
-    db.commit()
+    try:
+        db.execute(
+            "INSERT INTO users (name, father_name, enrollment, mobile, email, password) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, father_name, enrollment, mobile, email, generate_password_hash(password))
+        )
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        flash("This enrollment no is already registered", "error")
+        return render_template("sign.html")
     db.close()
 
     flash("Account created. Please login.", "success")
@@ -375,7 +513,7 @@ def dashboard():
     att_attended = sum(r[2] for r in attendance_rows)
     attendance_percent = round(att_attended / att_total * 100, 1) if att_total else 0
     status = find_status(average, len(academic))
-    tips = ["Your academic records and attendance are updated by your teacher."]
+    tips = make_tips(academic, percentages, attendance_rows, skill_rows, goals, projects)
     return render_template("dashboard.html", name=name, academic=academic,
         attendance_rows=attendance_rows, skills=skill_rows, remarks=remarks,
         average=average, attendance_percent=attendance_percent,
@@ -402,13 +540,15 @@ def addskill():
     if not skill or level not in ["Beginner", "Intermediate", "Advanced"] or category not in allowed_categories or not 0 <= progress <= 100:
         flash("Enter a skill, valid category/level and progress from 0 to 100.", "error")
         return redirect("/dashboard#skills")
-    db = sqlite3.connect("students.db")
-    exists = db.execute("SELECT id FROM skills WHERE enrollment=? AND LOWER(skill_name)=LOWER(?)",
-                        (session["enrollment"], skill)).fetchone()
-    if exists:
-        db.close()
-        flash("This skill already exists. Update the existing entry.", "warning")
+    if too_long(skill=skill, note=note):
+        flash("Skill name can have up to 50 letters and the note up to 200 letters.", "error")
         return redirect("/dashboard#skills")
+    db = sqlite3.connect("students.db")
+    old_id = find_skill(db, session["enrollment"], skill)
+    if old_id:
+        db.close()
+        flash(skill + " is already in your skills. Use Update on that skill.", "warning")
+        return redirect("/dashboard#skill-" + str(old_id))
     db.execute("INSERT INTO skills (enrollment, skill_name, level, progress, learning_note, category) VALUES (?, ?, ?, ?, ?, ?)",
                (session["enrollment"], skill, level, progress, note, category))
     db.commit()
@@ -433,13 +573,16 @@ def updateskill():
     if level not in ["Beginner", "Intermediate", "Advanced"] or category not in allowed_categories or not 0 <= progress <= 100:
         flash("Choose a valid level and progress from 0 to 100.", "error")
         return redirect("/dashboard#skills")
+    if too_long(note=note):
+        flash("The note can have up to 200 letters.", "error")
+        return redirect("/dashboard#skills")
     db = sqlite3.connect("students.db")
     db.execute("UPDATE skills SET level=?, progress=?, learning_note=?, category=? WHERE id=? AND enrollment=?",
                (level, progress, note, category, skill_id, session["enrollment"]))
     db.commit()
     db.close()
     flash("Skill updated.", "success")
-    return redirect("/dashboard#skills")
+    return redirect("/dashboard#skill-" + skill_id)
 
 
 @app.route("/deleteskill", methods=["POST"])
@@ -558,6 +701,8 @@ def add_project():
     status = request.form.get("status", "In Progress")
     if not title or status not in ["Planned", "In Progress", "Completed"]:
         flash("Enter a project title and valid status.", "error")
+    elif too_long(title=title, technologies=technologies, description=description, url=project_url):
+        flash("Project title can have up to 100 letters, technologies 150, description 500 and link 300.", "error")
     elif project_url and not (project_url.startswith("https://") or project_url.startswith("http://")):
         flash("Project link must start with http:// or https://.", "error")
     else:
@@ -605,8 +750,18 @@ def add_goal():
         return redirect("/")
     title = request.form.get("title", "").strip()
     target_date = request.form.get("target_date", "").strip()
+    date_ok = True
+    if target_date:
+        try:
+            datetime.date.fromisoformat(target_date)
+        except ValueError:
+            date_ok = False
     if not title:
         flash("Enter a learning goal.", "error")
+    elif too_long(goal=title):
+        flash("A goal can have up to 150 letters.", "error")
+    elif not date_ok:
+        flash("Choose a valid target date.", "error")
     else:
         db = sqlite3.connect("students.db")
         db.execute("INSERT INTO learning_goals (enrollment, title, target_date) VALUES (?, ?, ?)",
@@ -696,27 +851,13 @@ def teacher_dashboard():
     search = q.lower()
 
     db = sqlite3.connect("students.db")
-    users = db.execute("SELECT name, enrollment FROM users").fetchall()
-
-    # Make a list of all students with average, skill count and status
-    all_students = []
-    for u in users:
-        marks = db.execute(
-            "SELECT subject, (mid_sem + end_sem + internal_lab) * 100.0 / 120.0, id FROM academic_records WHERE enrollment = ?",
-            (u[1],)
-        ).fetchall()
-        skill_count = db.execute(
-            "SELECT COUNT(*) FROM skills WHERE enrollment = ?",
-            (u[1],)
-        ).fetchone()[0]
-        average = find_average(marks)
-        status = find_status(average, len(marks))
-        all_students.append((u[0], u[1], average, skill_count, status))
+    all_students = load_all_students(db)
     db.close()
 
-    # Numbers for the three cards
+    # Numbers for the four cards
     total_students = len(all_students)
     needs_attention = 0
+    low_attendance = 0
     class_total = 0
     class_count = 0
     for s in all_students:
@@ -725,6 +866,8 @@ def teacher_dashboard():
         if s[4] != "No data":
             class_total = class_total + s[2]
             class_count = class_count + 1
+        if s[5] is not None and s[5] < 75:
+            low_attendance = low_attendance + 1
 
     class_average = 0
     if class_count > 0:
@@ -738,7 +881,30 @@ def teacher_dashboard():
 
     return render_template("teacher_dashboard.html", students=students, q=q,
                            total_students=total_students, class_average=class_average,
-                           needs_attention=needs_attention)
+                           needs_attention=needs_attention, low_attendance=low_attendance,
+                           all_students=all_students)
+
+
+# Teacher downloads the class report as a CSV file (opens in Excel)
+@app.route("/teacher/export")
+def teacher_export():
+    if "teacher" not in session:
+        return redirect("/teacher")
+
+    db = sqlite3.connect("students.db")
+    all_students = load_all_students(db)
+    db.close()
+
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Name", "Enrollment", "Average %", "Attendance %", "Skills", "Projects", "Status"])
+    for s in all_students:
+        attendance = "" if s[5] is None else s[5]
+        writer.writerow([safe_cell(s[0]), safe_cell(s[1]), s[2], attendance, s[3], s[6], s[4]])
+
+    # "\ufeff" lets Excel read the file as UTF-8
+    return Response("\ufeff" + out.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=class_report.csv"})
 
 
 @app.route("/teacher/student")
@@ -778,14 +944,16 @@ def teacher_save_record():
     enrollment = request.form.get("enrollment", "").strip()
     subject = request.form.get("subject", "").strip()
     try:
-        mid = float(request.form.get("mid_sem", 0))
-        end = float(request.form.get("end_sem", 0))
-        internal = float(request.form.get("internal_lab", 0))
+        mid = float(request.form.get("mid_sem", ""))
+        end = float(request.form.get("end_sem", ""))
+        internal = float(request.form.get("internal_lab", ""))
     except ValueError:
         flash("Marks must be numeric.", "error")
         return redirect("/teacher/student?e=" + enrollment)
     if not subject or not (0 <= mid <= 30 and 0 <= end <= 70 and 0 <= internal <= 20):
         flash("Check subject and marks: Mid-Sem 0-30, End-Sem 0-70, Internal/Lab 0-20.", "error")
+    elif too_long(subject=subject):
+        flash("Subject name can have up to 60 letters.", "error")
     else:
         db = sqlite3.connect("students.db")
         student_exists = db.execute("SELECT 1 FROM users WHERE enrollment=?", (enrollment,)).fetchone()
@@ -821,6 +989,8 @@ def teacher_save_attendance():
         total, attended = -1, -1
     if not subject or total < 0 or attended < 0 or attended > total:
         flash("Enter valid attendance. Attended classes cannot exceed total classes.", "error")
+    elif too_long(subject=subject) or total > 1000:
+        flash("Subject name can have up to 60 letters and total classes up to 1000.", "error")
     else:
         db = sqlite3.connect("students.db")
         student_exists = db.execute("SELECT 1 FROM users WHERE enrollment=?", (enrollment,)).fetchone()
@@ -841,6 +1011,60 @@ def teacher_save_attendance():
         db.close()
         flash(message, "success")
     return redirect("/teacher/student?e=" + enrollment + "#attendance")
+
+
+# Teacher deletes a wrong marks entry
+@app.route("/teacher/deleterecord", methods=["POST"])
+def teacher_delete_record():
+    if "teacher" not in session:
+        return redirect("/teacher")
+
+    enrollment = request.form.get("enrollment", "").strip()
+    db = sqlite3.connect("students.db")
+    db.execute("DELETE FROM academic_records WHERE id = ? AND enrollment = ?",
+               (request.form.get("id"), enrollment))
+    db.commit()
+    db.close()
+    flash("Marks entry deleted.", "success")
+    return redirect("/teacher/student?e=" + enrollment + "#academics")
+
+
+# Teacher deletes a wrong attendance entry
+@app.route("/teacher/deleteattendance", methods=["POST"])
+def teacher_delete_attendance():
+    if "teacher" not in session:
+        return redirect("/teacher")
+
+    enrollment = request.form.get("enrollment", "").strip()
+    db = sqlite3.connect("students.db")
+    db.execute("DELETE FROM attendance WHERE id = ? AND enrollment = ?",
+               (request.form.get("id"), enrollment))
+    db.commit()
+    db.close()
+    flash("Attendance entry deleted.", "success")
+    return redirect("/teacher/student?e=" + enrollment + "#attendance")
+
+
+# Teacher changes the level of a student's skill
+@app.route("/teacher/updateskill", methods=["POST"])
+def teacher_update_skill():
+    if "teacher" not in session:
+        return redirect("/teacher")
+
+    enrollment = request.form.get("enrollment", "").strip()
+    skill_id = request.form.get("id", "")
+    level = request.form.get("level", "")
+
+    if level not in ["Beginner", "Intermediate", "Advanced"]:
+        flash("Choose Beginner, Intermediate or Advanced.", "error")
+    else:
+        db = sqlite3.connect("students.db")
+        db.execute("UPDATE skills SET level = ? WHERE id = ? AND enrollment = ?",
+                   (level, skill_id, enrollment))
+        db.commit()
+        db.close()
+        flash("Skill level updated.", "success")
+    return redirect("/teacher/student?e=" + enrollment + "#skills")
 
 
 # Teacher changes his own password
@@ -895,7 +1119,9 @@ def teacher_addremark():
     enrollment = request.form.get("enrollment", "").strip()
     remark = request.form.get("remark", "").strip()
 
-    if remark:
+    if len(remark) > LIMITS["remark"]:
+        flash("A remark can have up to 1000 letters.", "error")
+    elif remark:
         db = sqlite3.connect("students.db")
         student_exists = db.execute("SELECT 1 FROM users WHERE enrollment=?", (enrollment,)).fetchone()
         if student_exists:

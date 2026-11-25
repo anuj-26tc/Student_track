@@ -5,7 +5,7 @@
 <main class="container">
   <section class="card hero fade">
     <div><p class="eyebrow">Student growth workspace</p><h1>Welcome, {{ name }}</h1><p>Track your classroom performance, practical skills and learning goals in one place.</p></div>
-    <a class="btn btn-primary" href="/report" target="_blank">View Growth Report</a>
+    <a class="btn btn-light" href="/report" target="_blank" rel="noopener">View Growth Report</a>
   </section>
 
   <section class="stats">
@@ -13,6 +13,11 @@
     <div class="card stat"><div class="ring" style="--p:{{ attendance_percent }}"><span><b>{{ attendance_percent }}%</b></span></div><div><h3>Overall attendance</h3><p class="hint">Teacher-managed records</p></div></div>
     <div class="card stat"><div class="stat-icon">💡</div><div><h3>Skills added</h3><p class="big"><b>{{ total_skills }}</b></p></div></div>
     <div class="card stat"><div class="stat-icon">🧩</div><div><h3>Projects</h3><p class="big"><b>{{ total_projects }}</b></p></div></div>
+  </section>
+
+  <section class="card fade" id="recommendations">
+    <h2>🎯 Recommendations for You</h2><p class="hint">Advice made from your marks, attendance, skills and goals.</p>
+    {% for t in tips %}<div class="tip">👉 {{ t }}</div>{% else %}<p>You are doing well. Keep going!</p>{% endfor %}
   </section>
 
   <section class="card fade" id="analytics">
@@ -42,7 +47,7 @@
   <section class="card fade" id="skills">
     <h2>💡 Skill Development</h2><p class="hint">Add practical skills you are learning and maintain your own progress.</p>
     {% for skill in skills %}
-    <div class="item">
+    <div class="item" id="skill-{{ skill[0] }}">
       <div class="item-head"><strong>{{ skill[1] }}</strong><span class="badge">{{ skill[5] }}</span><span class="badge">{{ skill[2] }}</span><span class="pct">{{ skill[3] }}%</span></div>
       <div class="bar"><div class="fill" style="width:{{ skill[3] }}%"></div></div>
       {% if skill[4] %}<p class="hint">{{ skill[4] }}</p>{% endif %}
@@ -51,7 +56,7 @@
         <select name="category" class="input">{% for c in ['Programming','Web Development','Database','Communication','Problem Solving','Design','Other'] %}<option value="{{ c }}" {% if skill[5]==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
         <select name="level" class="input"><option {% if skill[2]=='Beginner' %}selected{% endif %}>Beginner</option><option {% if skill[2]=='Intermediate' %}selected{% endif %}>Intermediate</option><option {% if skill[2]=='Advanced' %}selected{% endif %}>Advanced</option></select>
         <input class="input" type="number" name="progress" min="0" max="100" value="{{ skill[3] }}" required>
-        <input class="input" type="text" name="learning_note" value="{{ skill[4] }}" placeholder="Learning note / project title">
+        <input class="input" type="text" name="learning_note" value="{{ skill[4] }}" placeholder="Learning note / project title" maxlength="200">
         <button class="btn btn-ghost btn-sm" type="submit">Update</button>
       </form>
       <form action="/deleteskill" method="post" class="inline-form" data-confirm="Delete this skill?"><input type="hidden" name="id" value="{{ skill[0] }}"><button class="btn btn-danger btn-sm">Delete</button></form>
@@ -59,12 +64,14 @@
     {% else %}<p>No skills added yet. Add your first skill below.</p>{% endfor %}
     <h3>Add a skill</h3>
     <form action="/addskill" method="post" class="add-form">
-      <input class="input" name="skill" placeholder="Skill name (e.g. Python)" required>
+      <input class="input" name="skill" placeholder="Skill name (e.g. Python)" required maxlength="50"
+        data-existing='{{ skills|map(attribute=1)|list|tojson }}' data-warning="skillWarn">
       <select class="input" name="category"><option>Programming</option><option>Web Development</option><option>Database</option><option>Communication</option><option>Problem Solving</option><option>Design</option><option>Other</option></select>
       <select class="input" name="level"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
       <input class="input" type="number" name="progress" min="0" max="100" value="0" placeholder="Progress %" required>
-      <input class="input" name="learning_note" placeholder="Learning note / project title">
+      <input class="input" name="learning_note" placeholder="Learning note / project title" maxlength="200">
       <button class="btn btn-primary">Add Skill</button>
+      <p id="skillWarn" class="inline-warning">⚠️ This skill is already added. Use Update on that skill instead.</p>
     </form>
   </section>
 
@@ -81,11 +88,11 @@
     {% else %}<p>No projects added yet.</p>{% endfor %}
     <h3>Add a project</h3>
     <form action="/projects/add" method="post" class="add-form">
-      <input class="input" name="title" placeholder="Project title" required>
-      <input class="input" name="technologies" placeholder="Technologies (e.g. Python, Flask, SQLite)">
-      <input class="input" name="project_url" type="url" placeholder="GitHub / project URL (optional)">
+      <input class="input" name="title" placeholder="Project title" required maxlength="100">
+      <input class="input" name="technologies" placeholder="Technologies (e.g. Python, Flask, SQLite)" maxlength="150">
+      <input class="input" name="project_url" type="url" placeholder="GitHub / project URL (optional)" maxlength="300">
       <select class="input" name="status"><option>Planned</option><option selected>In Progress</option><option>Completed</option></select>
-      <textarea class="input" name="description" placeholder="Short project description" rows="2"></textarea>
+      <textarea class="input" name="description" placeholder="Short project description" rows="2" maxlength="500"></textarea>
       <button class="btn btn-primary">Add Project</button>
     </form>
   </section>
@@ -100,7 +107,7 @@
     {% for goal in goals %}
       <div class="goal-row"><div><b class="{{ 'completed-text' if goal[3] else '' }}">{{ goal[1] }}</b>{% if goal[2] %}<p class="hint">Target: {{ goal[2] }}</p>{% endif %}</div><div class="item-actions"><form action="/goals/toggle" method="post" class="inline-form"><input type="hidden" name="id" value="{{ goal[0] }}"><button class="btn btn-ghost btn-sm">{{ 'Mark active' if goal[3] else 'Mark complete' }}</button></form><form action="/goals/delete" method="post" class="inline-form" data-confirm="Delete this goal?"><input type="hidden" name="id" value="{{ goal[0] }}"><button class="btn btn-danger btn-sm">Delete</button></form></div></div>
     {% else %}<p>No learning goals yet.</p>{% endfor %}
-    <form action="/goals/add" method="post" class="add-form"><input class="input" name="title" placeholder="e.g. Complete Python fundamentals" required><input class="input" type="date" name="target_date"><button class="btn btn-primary">Add Goal</button></form>
+    <form action="/goals/add" method="post" class="add-form"><input class="input" name="title" placeholder="e.g. Complete Python fundamentals" required maxlength="150"><input class="input" type="date" name="target_date"><button class="btn btn-primary">Add Goal</button></form>
   </section>
 </main>
 <footer class="footer">StudentTrack • Academic Progress + Practical Skill Development</footer>
